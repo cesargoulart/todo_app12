@@ -46,9 +46,9 @@ class _AddTodoDialogState extends State<AddTodoDialog> {
             SizedBox(height: 20),
             DatePickerWidget(
               initialDate: selectedDeadline,
-              onDateSelected: (date) {
+              onDateTimeSelected: (dateTime) {
                 setState(() {
-                  selectedDeadline = date;
+                  selectedDeadline = dateTime;
                 });
               },
             ),

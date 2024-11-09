@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../models/todo.dart';
 import '../database/database_helper.dart';
 import '../widgets/add_todo_dialog.dart';
 import '../widgets/edit_todo_dialog.dart';
 import '../widgets/repeat_helper.dart';
 import '../widgets/task_visibility_helper.dart';
+import '../widgets/deadline_filter_helper.dart';
 
 class TodoListScreen extends StatefulWidget {
   @override
@@ -14,6 +16,8 @@ class TodoListScreen extends StatefulWidget {
 class _TodoListScreenState extends State<TodoListScreen> {
   List<Todo> todos = [];
   final TaskVisibilityHelper visibilityHelper = TaskVisibilityHelper();
+  final DeadlineFilterHelper deadlineFilterHelper = DeadlineFilterHelper();
+  bool showTasksEndingSoon = false;
 
   @override
   void initState() {
@@ -60,9 +64,19 @@ class _TodoListScreenState extends State<TodoListScreen> {
     });
   }
 
+  void _toggleDeadlineFilter() {
+    setState(() {
+      showTasksEndingSoon = !showTasksEndingSoon;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Apply the visibility and deadline filters
     List<Todo> visibleTodos = visibilityHelper.filterTasks(todos);
+    if (showTasksEndingSoon) {
+      visibleTodos = deadlineFilterHelper.filterTasksWithUpcomingDeadlines(visibleTodos);
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -76,15 +90,41 @@ class _TodoListScreenState extends State<TodoListScreen> {
             ),
             onPressed: _toggleVisibility,
           ),
+          IconButton(
+            icon: Icon(
+              showTasksEndingSoon ? Icons.filter_alt : Icons.filter_alt_outlined,
+              color: showTasksEndingSoon ? Colors.blue : null,
+            ),
+            onPressed: _toggleDeadlineFilter,
+            tooltip: 'Show tasks ending in 3 days',
+          ),
         ],
       ),
       body: ListView.builder(
         itemCount: visibleTodos.length,
         itemBuilder: (context, index) {
           final task = visibleTodos[index];
+          final formattedDeadline = DateFormat('yyyy-MM-dd HH:mm').format(task.dueDate);
+          final repeatText = task.repeatInterval != null ? 'Repeats: ${task.repeatInterval!.capitalize()}' : 'No Repeat';
+
           return ListTile(
             title: Text(task.title),
-            subtitle: Text(task.description),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(task.description),
+                SizedBox(height: 4),
+                Text(
+                  "Deadline: $formattedDeadline",
+                  style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                ),
+                if (task.repeatInterval != null)
+                  Text(
+                    repeatText,
+                    style: TextStyle(color: Colors.grey[600], fontSize: 12),
+                  ),
+              ],
+            ),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -142,5 +182,11 @@ class _TodoListScreenState extends State<TodoListScreen> {
         child: Icon(Icons.add),
       ),
     );
+  }
+}
+
+extension StringExtension on String {
+  String capitalize() {
+    return "${this[0].toUpperCase()}${substring(1)}";
   }
 }
