@@ -7,6 +7,7 @@ import '../widgets/edit_todo_dialog.dart';
 import '../widgets/repeat_helper.dart';
 import '../widgets/task_visibility_helper.dart';
 import '../widgets/deadline_filter_helper.dart';
+import '../widgets/deadline_notifier.dart';
 
 class TodoListScreen extends StatefulWidget {
   @override
@@ -18,6 +19,7 @@ class _TodoListScreenState extends State<TodoListScreen> {
   final TaskVisibilityHelper visibilityHelper = TaskVisibilityHelper();
   final DeadlineFilterHelper deadlineFilterHelper = DeadlineFilterHelper();
   bool showTasksEndingSoon = false;
+  late DeadlineNotifier deadlineNotifier;
 
   @override
   void initState() {
@@ -25,10 +27,18 @@ class _TodoListScreenState extends State<TodoListScreen> {
     _loadTasks();
   }
 
+  @override
+  void dispose() {
+    deadlineNotifier.stopDeadlineCheck();  // Stop the deadline check timer
+    super.dispose();
+  }
+
   Future<void> _loadTasks() async {
     final tasks = await DatabaseHelper.instance.getTasks();
     setState(() {
       todos = tasks;
+      deadlineNotifier = DeadlineNotifier(context: context, tasks: todos);
+      deadlineNotifier.startDeadlineCheck();  // Start deadline notifications
     });
   }
 
@@ -43,15 +53,17 @@ class _TodoListScreenState extends State<TodoListScreen> {
     _loadTasks();  // Reload tasks after adding
   }
 
-  Future<void> _editTodo(Todo task, String newTitle, String newDescription, String? newRepeatInterval) async {
-    setState(() {
-      task.title = newTitle;
-      task.description = newDescription;
-      task.repeatInterval = newRepeatInterval;
-    });
-    await DatabaseHelper.instance.updateTask(task);
-    _loadTasks();  // Reload tasks after editing
-  }
+Future<void> _editTodo(Todo task, String newTitle, String newDescription, String? newRepeatInterval, DateTime newDeadline) async {
+  setState(() {
+    task.title = newTitle;
+    task.description = newDescription;
+    task.repeatInterval = newRepeatInterval;
+    task.dueDate = newDeadline;
+  });
+  await DatabaseHelper.instance.updateTask(task);
+  _loadTasks();  // Reload tasks after editing
+}
+
 
   Future<void> _deleteTodo(Todo task) async {
     await DatabaseHelper.instance.deleteTask(task.id!);
@@ -151,6 +163,8 @@ class _TodoListScreenState extends State<TodoListScreen> {
                         result['title']!,
                         result['description']!,
                         result['repeatInterval'],
+                        result['deadline'],
+
                       );
                     }
                   },

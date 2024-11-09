@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/todo.dart';
+import 'date_picker_widget.dart';
 
 class EditTodoDialog extends StatefulWidget {
   final Todo task;
@@ -14,14 +15,16 @@ class _EditTodoDialogState extends State<EditTodoDialog> {
   late TextEditingController titleController;
   late TextEditingController descriptionController;
   String? selectedRepeatInterval;
+  late DateTime selectedDeadline;
 
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with existing task details
+    // Initialize controllers and deadline with the existing task data
     titleController = TextEditingController(text: widget.task.title);
     descriptionController = TextEditingController(text: widget.task.description);
     selectedRepeatInterval = widget.task.repeatInterval;
+    selectedDeadline = widget.task.dueDate;
   }
 
   @override
@@ -62,6 +65,15 @@ class _EditTodoDialogState extends State<EditTodoDialog> {
               },
               decoration: InputDecoration(labelText: 'Repeat'),
             ),
+            SizedBox(height: 20),
+            DatePickerWidget(
+              initialDate: selectedDeadline,
+              onDateTimeSelected: (dateTime) {
+                setState(() {
+                  selectedDeadline = dateTime;
+                });
+              },
+            ),
           ],
         ),
       ),
@@ -78,6 +90,7 @@ class _EditTodoDialogState extends State<EditTodoDialog> {
               'title': titleController.text,
               'description': descriptionController.text,
               'repeatInterval': selectedRepeatInterval,
+              'deadline': selectedDeadline,
             });
           },
           child: Text('Save'),
