@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/todo.dart';
+import '../database/database_helper.dart';
 import '../widgets/add_todo_dialog.dart';
 import '../widgets/edit_todo_dialog.dart';
 import '../widgets/repeat_helper.dart';
@@ -11,30 +12,46 @@ class TodoListScreen extends StatefulWidget {
 }
 
 class _TodoListScreenState extends State<TodoListScreen> {
-  List<Todo> todos = [
-    Todo(title: 'Buy groceries', description: 'Milk, Eggs, Bread, Butter', dueDate: DateTime.now()),
-    Todo(title: 'Workout', description: '1-hour gym session', dueDate: DateTime.now()),
-    Todo(title: 'Study Flutter', description: 'Complete the Todo app project', dueDate: DateTime.now()),
-  ];
-
+  List<Todo> todos = [];
   final TaskVisibilityHelper visibilityHelper = TaskVisibilityHelper();
 
-  void _addTodo(String title, String description, String? repeatInterval) {
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    final tasks = await DatabaseHelper.instance.getTasks();
     setState(() {
-      todos.add(Todo(
-        title: title,
-        description: description,
-        dueDate: DateTime.now(),
-        repeatInterval: repeatInterval,
-      ));
+      todos = tasks;
     });
   }
 
-  void _editTodo(Todo task, String newTitle, String newDescription) {
+  Future<void> _addTodo(String title, String description, String? repeatInterval, DateTime deadline) async {
+    final newTodo = Todo(
+      title: title,
+      description: description,
+      dueDate: deadline,
+      repeatInterval: repeatInterval,
+    );
+    await DatabaseHelper.instance.insertTask(newTodo);
+    _loadTasks();  // Reload tasks after adding
+  }
+
+  Future<void> _editTodo(Todo task, String newTitle, String newDescription, String? newRepeatInterval) async {
     setState(() {
       task.title = newTitle;
       task.description = newDescription;
+      task.repeatInterval = newRepeatInterval;
     });
+    await DatabaseHelper.instance.updateTask(task);
+    _loadTasks();  // Reload tasks after editing
+  }
+
+  Future<void> _deleteTodo(Todo task) async {
+    await DatabaseHelper.instance.deleteTask(task.id!);
+    _loadTasks();  // Reload tasks after deletion
   }
 
   void _toggleVisibility() {
@@ -73,23 +90,34 @@ class _TodoListScreenState extends State<TodoListScreen> {
               children: [
                 Checkbox(
                   value: task.isCompleted,
-                  onChanged: (bool? value) {
+                  onChanged: (bool? value) async {
                     setState(() {
                       task.isCompleted = value!;
                     });
+                    await DatabaseHelper.instance.updateTask(task);
+                    _loadTasks();
                   },
                 ),
                 IconButton(
                   icon: Icon(Icons.edit),
                   onPressed: () async {
-                    final result = await showDialog<Map<String, String>>(
+                    final result = await showDialog<Map<String, dynamic>>(
                       context: context,
                       builder: (context) => EditTodoDialog(task: task),
                     );
                     if (result != null) {
-                      _editTodo(task, result['title']!, result['description']!);
+                      _editTodo(
+                        task,
+                        result['title']!,
+                        result['description']!,
+                        result['repeatInterval'],
+                      );
                     }
                   },
+                ),
+                IconButton(
+                  icon: Icon(Icons.delete),
+                  onPressed: () => _deleteTodo(task),
                 ),
               ],
             ),
@@ -103,7 +131,12 @@ class _TodoListScreenState extends State<TodoListScreen> {
             builder: (context) => AddTodoDialog(),
           );
           if (result != null) {
-            _addTodo(result['title'], result['description'], result['repeatInterval']);
+            _addTodo(
+              result['title']!,
+              result['description']!,
+              result['repeatInterval'],
+              result['deadline'],
+            );
           }
         },
         child: Icon(Icons.add),
