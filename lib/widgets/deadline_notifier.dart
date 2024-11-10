@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/todo.dart';
+import 'snooze_helper.dart';
 
 class DeadlineNotifier {
   final BuildContext context;
   final List<Todo> tasks;
+  final SnoozeHelper snoozeHelper = SnoozeHelper();
   Timer? _timer;
 
   DeadlineNotifier({required this.context, required this.tasks});
@@ -45,7 +47,14 @@ class DeadlineNotifier {
               onPressed: () {
                 Navigator.of(context).pop();
               },
-              child: Text('OK'),
+              child: Text('Dismiss'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await snoozeHelper.snoozeTask(task);
+                Navigator.of(context).pop();
+              },
+              child: Text('Snooze +1 Hour'),
             ),
           ],
         );
