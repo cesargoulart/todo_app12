@@ -7,9 +7,10 @@ class DeadlineNotifier {
   final BuildContext context;
   final List<Todo> tasks;
   final SnoozeHelper snoozeHelper = SnoozeHelper();
+  final Function onTaskUpdated;  // Callback function to refresh the task list
   Timer? _timer;
 
-  DeadlineNotifier({required this.context, required this.tasks});
+  DeadlineNotifier({required this.context, required this.tasks, required this.onTaskUpdated});
 
   // Starts periodic checks for task deadlines
   void startDeadlineCheck() {
@@ -52,6 +53,7 @@ class DeadlineNotifier {
             TextButton(
               onPressed: () async {
                 await snoozeHelper.snoozeTask(task);
+                onTaskUpdated();  // Call the callback to refresh the task list
                 Navigator.of(context).pop();
               },
               child: Text('Snooze +1 Hour'),

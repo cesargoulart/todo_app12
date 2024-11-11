@@ -37,28 +37,51 @@ class _TodoListScreenState extends State<TodoListScreen> {
     final tasks = await DatabaseHelper.instance.getTasks();
     setState(() {
       todos = tasks;
-      deadlineNotifier = DeadlineNotifier(context: context, tasks: todos);
+      deadlineNotifier = DeadlineNotifier(
+        context: context,
+        tasks: todos,
+        onTaskUpdated: _refreshTaskList,  // Pass the callback
+      );
       deadlineNotifier.startDeadlineCheck();  // Start deadline notifications
     });
   }
 
-  Future<void> _addTodo(String title, String description, String? repeatInterval, DateTime deadline) async {
-    final newTodo = Todo(
-      title: title,
-      description: description,
-      dueDate: deadline,
-      repeatInterval: repeatInterval,
-    );
-    await DatabaseHelper.instance.insertTask(newTodo);
-    _loadTasks();  // Reload tasks after adding
+  // Callback to refresh the task list
+  void _refreshTaskList() {
+    setState(() {});  // Refreshes the screen with the updated tasks
   }
 
+Future<void> _addTodo(String title, String description, String? repeatInterval, DateTime initialDeadline) async {
+  DateTime deadline = initialDeadline;
+
+  // If a repeat interval is selected, calculate the new deadline
+  if (repeatInterval != null) {
+    deadline = RepeatHelper.calculateNextDeadline(initialDeadline, repeatInterval);
+  }
+
+  final newTodo = Todo(
+    title: title,
+    description: description,
+    dueDate: deadline,
+    repeatInterval: repeatInterval,
+  );
+  await DatabaseHelper.instance.insertTask(newTodo);
+  _loadTasks();  // Reload tasks after adding
+}
+
 Future<void> _editTodo(Todo task, String newTitle, String newDescription, String? newRepeatInterval, DateTime newDeadline) async {
+  DateTime deadline = newDeadline;
+
+  // Calculate the new deadline based on the repeat interval
+  if (newRepeatInterval != null) {
+    deadline = RepeatHelper.calculateNextDeadline(newDeadline, newRepeatInterval);
+  }
+
   setState(() {
     task.title = newTitle;
     task.description = newDescription;
     task.repeatInterval = newRepeatInterval;
-    task.dueDate = newDeadline;
+    task.dueDate = deadline;
   });
   await DatabaseHelper.instance.updateTask(task);
   _loadTasks();  // Reload tasks after editing
@@ -164,7 +187,6 @@ Future<void> _editTodo(Todo task, String newTitle, String newDescription, String
                         result['description']!,
                         result['repeatInterval'],
                         result['deadline'],
-
                       );
                     }
                   },
